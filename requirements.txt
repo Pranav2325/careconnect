@@ -1,0 +1,45 @@
+# Web Framework
+fastapi==0.111.0 #it defines API endpoints
+uvicorn==0.29.0 #it will receive requests and bring response
+
+# AI & Agents
+# AI & Agents
+langchain==0.3.25
+langgraph==0.2.73
+langchain-google-genai==2.1.4
+
+# Vector Database
+chromadb==0.5.0 #store chunks as emebeddings
+
+# Database
+sqlalchemy==2.0.30 #SQLAlchemy converts it into SQL.
+psycopg2-binary==2.9.10 #bridge between python and postegresql
+alembic==1.13.1 #updates db without deleting existing data
+
+# Cache
+redis==5.0.4 #keeps frequently used data in memory, responses are much faster.
+
+# PDF Parsing
+pypdf==4.2.0 #for reading PDF files
+
+# WhatsApp/SMS
+twilio==9.1.0 
+
+# Authentication
+python-jose==3.3.0 #created and verifies JWT
+passlib==1.7.4 #makes hashing and verifying pass easier
+bcrypt==4.1.3 #hashed version of pass
+python-multipart==0.0.9 #Allows users to upload files.
+
+# Environment
+python-dotenv==1.0.1
+
+# HTTP
+httpx==0.27.0 #Your application can call other APIs.
+
+# Testing
+pytest==8.2.0 #verifies code works correctly
+pytest-asyncio==0.23.6
+
+# Frontend
+streamlit==1.35.0
