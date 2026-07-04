@@ -9,7 +9,7 @@ from backend.core.config import settings
 from backend.db.database import engine
 # Import all database models
 from backend.db.models import Base
-from backend.api import patients, medicines, doctors, documents
+from backend.api import patients, medicines, doctors, documents, chat
 
 # Create all tables in the database if they don't already exist
 Base.metadata.create_all(bind=engine)
@@ -44,6 +44,7 @@ app.include_router(patients.router)
 app.include_router(medicines.router)
 app.include_router(doctors.router)
 app.include_router(documents.router)
+app.include_router(chat.router)
 
 # Home route
 # Open http://localhost:8000/
