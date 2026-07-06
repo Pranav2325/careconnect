@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import API functions to talk to backend
-from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors
+from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors,add_medicine,add_doctor
 
 
 # Set page configuration (title, icon, layout)
@@ -180,7 +180,45 @@ with tab1:
 
 
 with tab2:
-    st.subheader("Add Data Tab — Coming Soon")
+    col1,col2=st.columns(2);
+    with col1:
+        st.subheader("Add Medicine")
+        with st.form("add_medicine_form"):
+            med_name = st.text_input("Medicine Name",
+                placeholder="e.g. Metformin")
+            med_dosage = st.text_input("Dosage",
+                placeholder="e.g. 500mg")
+            med_timing = st.text_input("Timing",
+                placeholder="e.g. Morning and Night after food")
+            med_submitted=st.form_submit_button("Add Medicine")
+            
+            if med_submitted and med_name:
+                result=add_medicine(patient_id,med_name,med_dosage,med_timing)
+                if result:
+                    st.success(f"{med_name} added!")
+                else:
+                    st.error("Failed to add medicine")
+    with col2:
+        st.subheader("Add Doctor")
+        with st.form("add_doctor_form"):
+            doc_name = st.text_input("Doctor Name",
+                placeholder="e.g. Dr. Anil Sharma")
+            doc_spec = st.text_input("Specialization",
+                placeholder="e.g. Cardiologist")
+            doc_phone = st.text_input("Phone",
+                placeholder="e.g. 9876543210")
+            doc_hospital = st.text_input("Hospital",
+                placeholder="e.g. Apollo Hospital Nagpur")
+            doc_submitted = st.form_submit_button("Add Doctor")
+
+            if doc_submitted and doc_name:
+                result = add_doctor(patient_id, doc_name,
+                                   doc_spec, doc_phone, doc_hospital)
+                if result:
+                    st.success(f"{doc_name} added!")
+                else:
+                    st.error("Failed to add doctor")                   
+                       
 
 with tab3:
     st.subheader("Documents Tab — Coming Soon")
