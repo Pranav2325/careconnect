@@ -149,6 +149,7 @@ tab_map = {
     "Crisis Support": 4
 }
 st.session_state.active_tab = tab_map.get(page, 0)
+st.query_params["tab"] = str(st.session_state.active_tab)
 st.divider()
 
 # Show content based on selection
