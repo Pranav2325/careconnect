@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import API functions to talk to backend
-from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors,add_medicine,add_doctor,upload_document
+from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors,add_medicine,add_doctor,upload_document,ask_question
 
 
 # Set page configuration (title, icon, layout)
@@ -254,7 +254,55 @@ with tab3:
                 st.error("Failed to upload document")
 
 with tab4:
-    st.subheader("Chat Tab — Coming Soon")
+    st.subheader(" Ask Health Questions")
+    st.caption("Ask anything about the patient's health in plain language")
+
+    # Initialize chat history in session state
+    # Key includes patient_id so history resets when switching patients
+    chat_key = f"chat_history_{patient_id}"
+    if chat_key not in st.session_state:
+        st.session_state[chat_key] = []
+
+    # Display existing chat history
+    for message in st.session_state[chat_key]:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+            if "sources" in message and message["sources"]:
+                st.caption(f" Sources: {', '.join(message['sources'])}")
+
+    # Chat input at bottom
+    question = st.chat_input("Ask a health question...")
+
+    if question:
+        # Show user message immediately
+        with st.chat_message("user"):
+            st.write(question)
+
+        # Save user message to history
+        st.session_state[chat_key].append({
+            "role": "user",
+            "content": question
+        })
+
+        # Get AI answer
+        with st.chat_message("assistant"):
+            with st.spinner("Searching medical records and thinking..."):
+                result = ask_question(patient_id, question)
+
+            if result:
+                st.write(result["answer"])
+                if result["sources"]:
+                    st.caption(f" Sources: {', '.join(result['sources'])}")
+
+                # Save assistant message to history
+                st.session_state[chat_key].append({
+                    "role": "assistant",
+                    "content": result["answer"],
+                    "sources": result["sources"]
+                })
+            else:
+                st.error("Failed to get answer")
+                    
 
 with tab5:
     st.subheader("Crisis Tab — Coming Soon")
