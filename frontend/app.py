@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import API functions to talk to backend
-from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors,add_medicine,add_doctor,upload_document,ask_question
+from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors,add_medicine,add_doctor,upload_document,ask_question,analyze_crisis,get_chat_history,clear_chat_history
 
 
 # Set page configuration (title, icon, layout)
@@ -24,6 +24,12 @@ if "selected_patient_id" not in st.session_state:
 
 if "selected_patient_name" not in st.session_state:
     st.session_state.selected_patient_name = None
+    
+# Read active tab from URL params — survives refresh
+if "tab" in st.query_params:
+    st.session_state.active_tab = int(st.query_params["tab"])
+else:
+    st.session_state.active_tab = 0
 
 
 # ---------------- SIDEBAR ----------------
@@ -127,15 +133,27 @@ patient_name=st.session_state.selected_patient_name
 
 st.title(f"{patient_name}'s Health Dashboard")
 # ── Tabs ──────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    " Profile",
-    " Add Data",
-    " Documents",
-    " Chat",
-    " Crisis Support"
-])
+page = st.radio(
+    "Navigate",
+    ["Profile", "Add Data", "Documents", "Chat", "Crisis Support"],
+    horizontal=True,
+    label_visibility="collapsed",
+    index=st.session_state.active_tab
+)
 
-with tab1:
+tab_map = {
+    "Profile": 0,
+    "Add Data": 1,
+    "Documents": 2,
+    "Chat": 3,
+    "Crisis Support": 4
+}
+st.session_state.active_tab = tab_map.get(page, 0)
+st.divider()
+
+# Show content based on selection
+if page == "Profile":
+
     st.subheader("Patient Profile")
 
     patient = get_patient(patient_id)
@@ -178,12 +196,9 @@ with tab1:
                 st.write(f"{doc['phone']}")
     else:
         st.info("No doctors added yet")
-    
-  
-     
 
+elif page == "Add Data":
 
-with tab2:
     col1,col2=st.columns(2);
     with col1:
         st.subheader("Add Medicine")
@@ -221,10 +236,10 @@ with tab2:
                 if result:
                     st.success(f"{doc_name} added!")
                 else:
-                    st.error("Failed to add doctor")                   
-                       
+                    st.error("Failed to add doctor") 
 
-with tab3:
+elif page == "Documents":
+
     st.subheader("Upload Medical Documents")
     st.caption("Upload prescriptions, blood tests, ECGs, Scan reports- any PDF")
     
@@ -253,24 +268,29 @@ with tab3:
             else:
                 st.error("Failed to upload document")
 
-with tab4:
-    st.subheader(" Ask Health Questions")
+elif page == "Chat":
+    st.subheader("Ask Health Questions")
     st.caption("Ask anything about the patient's health in plain language")
 
-    # Initialize chat history in session state
-    # Key includes patient_id so history resets when switching patients
-    chat_key = f"chat_history_{patient_id}"
-    if chat_key not in st.session_state:
-        st.session_state[chat_key] = []
+    # Load chat history from database on every load
+    # This survives browser refresh because it's in PostgreSQL
+    chat_history = get_chat_history(patient_id)
 
-    # Display existing chat history
-    for message in st.session_state[chat_key]:
+    # Clear button
+    col1, col2 = st.columns([6, 1])
+    with col2:
+        if st.button("Clear", help="Clear chat history"):
+            clear_chat_history(patient_id)
+            st.rerun()
+
+    # Display chat history from database
+    for message in chat_history:
         with st.chat_message(message["role"]):
             st.write(message["content"])
-            if "sources" in message and message["sources"]:
-                st.caption(f" Sources: {', '.join(message['sources'])}")
+            if message["sources"]:
+                st.caption(f"Sources: {', '.join(message['sources'])}")
 
-    # Chat input at bottom
+    # Chat input
     question = st.chat_input("Ask a health question...")
 
     if question:
@@ -278,13 +298,7 @@ with tab4:
         with st.chat_message("user"):
             st.write(question)
 
-        # Save user message to history
-        st.session_state[chat_key].append({
-            "role": "user",
-            "content": question
-        })
-
-        # Get AI answer
+        # Get AI answer — this also saves to database automatically
         with st.chat_message("assistant"):
             with st.spinner("Searching medical records and thinking..."):
                 result = ask_question(patient_id, question)
@@ -292,17 +306,60 @@ with tab4:
             if result:
                 st.write(result["answer"])
                 if result["sources"]:
-                    st.caption(f" Sources: {', '.join(result['sources'])}")
-
-                # Save assistant message to history
-                st.session_state[chat_key].append({
-                    "role": "assistant",
-                    "content": result["answer"],
-                    "sources": result["sources"]
-                })
+                    st.caption(f"Sources: {', '.join(result['sources'])}")
             else:
                 st.error("Failed to get answer")
-                    
 
-with tab5:
-    st.subheader("Crisis Tab — Coming Soon")
+elif page == "Crisis Support":
+    st.subheader("Crisis Support")
+    st.error("⚠️For life-threatening emergencies, call 108 or 112 immediately")
+    st.caption("Describe what's happening and get immediate guidance")
+
+    symptoms = st.text_area(
+        "Describe the symptoms",
+        placeholder="e.g. Dad has chest pain and is sweating heavily, feels dizzy and weak",
+        height=100
+    )
+
+    if st.button("Analyze Crisis", type="primary"):
+        if symptoms:
+            with st.spinner("Analyzing emergency situation..."):
+                result = analyze_crisis(patient_id, symptoms)
+
+            if result:
+                # Ambulance alert
+                if result["call_ambulance"]:
+                    st.error("CALL AMBULANCE IMMEDIATELY — Dial 108 or 112")
+                else:
+                    st.warning("Monitor situation closely and contact doctor")
+
+                # Immediate steps
+                st.subheader("Immediate Steps")
+                for i, step in enumerate(result["immediate_steps"], 1):
+                    st.write(f"**{i}.** {step}")
+
+                # Possible causes
+                st.subheader("Possible Causes")
+                st.caption("(Not a diagnosis — consult a doctor)")
+                for cause in result["possible_causes"]:
+                    st.write(f"• {cause}")
+
+                # Reassurance
+                st.info(f"{result['reassurance']}")
+
+                # Emergency card
+                st.subheader("Emergency Card")
+                st.caption("Show this to the ER doctor")
+                st.code(result["emergency_card"])
+
+                # What to tell doctor
+                st.subheader("What to Tell the Doctor")
+                st.write(result["what_to_tell_doctor"])
+            else:
+                st.error("Failed to analyze crisis")
+        else:
+            st.warning("Please describe the symptoms first")
+
+
+
+

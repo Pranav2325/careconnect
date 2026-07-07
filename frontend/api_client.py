@@ -176,3 +176,16 @@ def analyze_crisis(patient_id: int, symptoms: str) -> dict:
 
     # Return None if request fails
     return None
+
+def get_chat_history(patient_id: int) -> list:
+    """Get chat history for a patient from database"""
+    response = requests.get(f"{BASE_URL}/chat/history/{patient_id}")
+    if response.status_code == 200:
+        return response.json()
+    return []
+
+
+def clear_chat_history(patient_id: int) -> bool:
+    """Clear chat history for a patient"""
+    response = requests.delete(f"{BASE_URL}/chat/history/{patient_id}")
+    return response.status_code == 200

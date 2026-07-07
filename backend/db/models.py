@@ -75,3 +75,15 @@ class Medicine(Base):
 
     patient = relationship("Patient", back_populates="medicines")
     prescribed_by_doctor = relationship("Doctor", back_populates="medicines") 
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
+    role = Column(String, nullable=False)  # "user" or "assistant"
+    content = Column(Text, nullable=False)
+    sources = Column(Text, nullable=True)  # comma separated filenames
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    patient = relationship("Patient")
