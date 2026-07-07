@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import API functions to talk to backend
-from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors,add_medicine,add_doctor
+from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors,add_medicine,add_doctor,upload_document
 
 
 # Set page configuration (title, icon, layout)
@@ -28,9 +28,13 @@ if "selected_patient_name" not in st.session_state:
 
 # ---------------- SIDEBAR ----------------
 with st.sidebar:
+    col1, col2 = st.sidebar.columns([1, 4])
 
-    # App title in sidebar
-    st.title("CareConnect")
+    with col1:
+        st.image("../assets/logo.png", width=50)
+
+    with col2:
+        st.markdown("## CareConnect")
 
     # Small description text
     st.caption("AI-powered family health management")
@@ -221,7 +225,33 @@ with tab2:
                        
 
 with tab3:
-    st.subheader("Documents Tab — Coming Soon")
+    st.subheader("Upload Medical Documents")
+    st.caption("Upload prescriptions, blood tests, ECGs, Scan reports- any PDF")
+    
+    uploaded_file=st.file_uploader(
+        "Choose a PDF file",
+        type=["pdf"]
+    )
+    if uploaded_file:
+        st.info(f"Selected: **{uploaded_file.name}** ({uploaded_file.size} bytes)")
+        
+        if st.button("Upload and Process"):
+            with st.spinner("Extracting text and storing in AI memory..."):
+                result=upload_document(
+                    patient_id,
+                    uploaded_file.read(),
+                    uploaded_file.name
+                )
+            if result:
+                st.success(f"""
+                 Document processed successfully!
+                - **File:** {result['details']['filename']}
+                - **Text extracted:** {result['details']['characters_extracted']} characters
+                - **Chunks stored:** {result['details']['chunks_stored']}
+                """)
+                st.info("💡 You can now ask questions about this document in the Chat tab")
+            else:
+                st.error("Failed to upload document")
 
 with tab4:
     st.subheader("Chat Tab — Coming Soon")
