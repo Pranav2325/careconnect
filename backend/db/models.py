@@ -87,3 +87,17 @@ class ChatMessage(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     patient = relationship("Patient")
+    
+class Vital(Base):
+    __tablename__="vitals"
+    
+    id = Column(Integer, primary_key=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
+    vital_type = Column(String, nullable=False)
+    value = Column(String, nullable=False)
+    value_secondary = Column(String, nullable=True)  # for BP diastolic
+    unit = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    recorded_at = Column(DateTime, default=datetime.utcnow)
+
+    patient = relationship("Patient")

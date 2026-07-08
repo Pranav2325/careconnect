@@ -189,3 +189,39 @@ def clear_chat_history(patient_id: int) -> bool:
     """Clear chat history for a patient"""
     response = requests.delete(f"{BASE_URL}/chat/history/{patient_id}")
     return response.status_code == 200
+
+def log_vital(patient_id: int, vital_type: str, value: str,
+              value_secondary: str = None, unit: str = None, notes: str = None) -> dict:
+    """Log a new vital reading"""
+    response = requests.post(f"{BASE_URL}/vitals/", json={
+        "patient_id": patient_id,
+        "vital_type": vital_type,
+        "value": value,
+        "value_secondary": value_secondary,
+        "unit": unit,
+        "notes": notes
+    })
+    if response.status_code == 200:
+        return response.json()
+    return None
+
+
+def get_vitals(patient_id: int) -> dict:
+    """Get all vitals grouped by type"""
+    response = requests.get(f"{BASE_URL}/vitals/{patient_id}")
+    if response.status_code == 200:
+        return response.json()
+    return {}
+
+
+def get_trends(patient_id: int) -> dict:
+    """Get trend analysis for all vitals"""
+    response = requests.get(f"{BASE_URL}/vitals/{patient_id}/trends")
+    if response.status_code == 200:
+        return response.json()
+    return {}
+
+def delete_vital(vital_id: int) -> bool:
+    """Delete a specific vital reading by ID"""
+    response = requests.delete(f"{BASE_URL}/vitals/{vital_id}")
+    return response.status_code == 200

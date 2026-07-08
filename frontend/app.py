@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import API functions to talk to backend
-from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors,add_medicine,add_doctor,upload_document,ask_question,analyze_crisis,get_chat_history,clear_chat_history
+from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors,add_medicine,add_doctor,upload_document,ask_question,analyze_crisis,get_chat_history,clear_chat_history,log_vital,get_trends,get_vitals,delete_vital
 
 
 # Set page configuration (title, icon, layout)
@@ -135,7 +135,7 @@ st.title(f"{patient_name}'s Health Dashboard")
 # ── Tabs ──────────────────────────────────────────────────────────
 page = st.radio(
     "Navigate",
-    ["Profile", "Add Data", "Documents", "Chat", "Crisis Support"],
+    ["Profile", "Add Data","Vitals", "Documents", "Chat", "Crisis Support"],
     horizontal=True,
     label_visibility="collapsed",
     index=st.session_state.active_tab
@@ -144,9 +144,10 @@ page = st.radio(
 tab_map = {
     "Profile": 0,
     "Add Data": 1,
-    "Documents": 2,
-    "Chat": 3,
-    "Crisis Support": 4
+    "Vitals": 2,
+    "Documents": 3,
+    "Chat": 4,
+    "Crisis Support": 5
 }
 st.session_state.active_tab = tab_map.get(page, 0)
 st.query_params["tab"] = str(st.session_state.active_tab)
@@ -238,6 +239,114 @@ elif page == "Add Data":
                     st.success(f"{doc_name} added!")
                 else:
                     st.error("Failed to add doctor") 
+                    
+elif page=="Vitals":
+    st.subheader("Vitals Tracking")
+    st.caption("Log and track daily health readings")  
+    
+    st.subheader("Log New Reading") 
+    col1,col2=st.columns(2)
+    with col1:
+        vital_type = st.selectbox(
+            "Vital Type",
+            ["blood_pressure", "blood_sugar", "heart_rate", "weight"]
+        )
+
+        if vital_type == "blood_pressure":
+            bp_sys = st.text_input("Systolic (top number)", placeholder="e.g. 130")
+            bp_dia = st.text_input("Diastolic (bottom number)", placeholder="e.g. 85")
+            unit = "mmHg"
+        elif vital_type == "blood_sugar":
+            value = st.text_input("Blood Sugar", placeholder="e.g. 142")
+            unit = "mg/dL"
+        elif vital_type == "heart_rate":
+            value = st.text_input("Heart Rate", placeholder="e.g. 72")
+            unit = "bpm"
+        elif vital_type == "weight":
+            value = st.text_input("Weight", placeholder="e.g. 70")
+            unit = "kg"
+    
+    with col2:
+        notes=st.text_input("Notes (optional)",placeholder="e.g. Fasting reading, after walking")
+        
+        if st.button("log Reading",type="primary"):
+            if vital_type == "blood_pressure":
+                if bp_sys and bp_dia:
+                    result = log_vital(patient_id, vital_type,
+                                      bp_sys, bp_dia, unit, notes)
+                else:
+                    st.warning("Please enter both systolic and diastolic values")
+                    result = None
+            else:
+                if value:
+                    result = log_vital(patient_id, vital_type,
+                                      value, None, unit, notes)
+                else:
+                    st.warning("Please enter a value")
+                    result = None
+
+            if result:
+                st.success("Reading logged successfully!")
+                
+    st.divider()
+    
+    trends=get_trends(patient_id)
+    if trends:
+        for vtype,trend_data in trends.items():
+            with st.expander(f"{vtype.replace('_', ' ').title()}"):
+                if trend_data["trend"] == "insufficient_data":
+                    st.info(f"{trend_data['message']}")
+                elif trend_data["trend"] == "complex":
+                    st.info(f"Latest: {trend_data['latest_value']} — {trend_data['message']}")
+                else:
+                    # Show trend with color
+                    if trend_data.get("alert"):
+                        st.error(f"RISING — {trend_data['change_percent']}% increase detected")
+                    elif trend_data["trend"] == "falling":
+                        st.warning(f"Falling — {trend_data['change_percent']}% decrease")
+                    else:
+                        st.success(f"Stable — only {trend_data['change_percent']}% change")
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Latest", f"{trend_data['latest_value']} {trend_data.get('latest_unit', '')}")
+                    with col2:
+                        st.metric("Oldest", f"{trend_data['oldest_value']}")
+                    with col3:
+                        st.metric("Readings", trend_data['readings_count']) 
+    st.divider()
+    
+    st.subheader("Recent Readings")    
+    vitals = get_vitals(patient_id)
+
+    if vitals:
+        for vtype, readings in vitals.items():
+            st.write(f"**{vtype.replace('_', ' ').title()}**")
+            for reading in readings[:5]:  # show last 5
+                col1, col2, col3,col4 = st.columns([2, 2, 3,1])
+                with col1:
+                    if reading["value_secondary"]:
+                        st.write(f"{reading['value']}/{reading['value_secondary']} {reading['unit']}")
+                    else:
+                        st.write(f"{reading['value']} {reading['unit']}")
+                with col2:
+                    st.write(reading["recorded_at"][:10])
+                with col3:
+                    st.write(reading["notes"] or "")
+                with col4:
+                    # Unique key per button using reading ID
+                    if st.button("🗑️", key=f"del_vital_{reading['id']}",
+                                help="Delete this reading"):
+                        if delete_vital(reading["id"]):
+                            st.success("Deleted!")
+                            st.rerun()
+                        else:
+                            st.error("Failed to delete")
+            st.divider()
+    else:
+        st.info("No vitals logged yet")               
+        
+        
 
 elif page == "Documents":
 
