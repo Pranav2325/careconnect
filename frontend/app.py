@@ -8,7 +8,17 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import API functions to talk to backend
-from frontend.api_client import get_all_patients, add_patient,get_patient,get_medicines,get_doctors,add_medicine,add_doctor,upload_document,ask_question,analyze_crisis,get_chat_history,clear_chat_history,log_vital,get_trends,get_vitals,delete_vital
+from frontend.api_client import (
+    get_all_patients, add_patient,
+    get_patient, get_medicines, get_doctors,
+    add_medicine, add_doctor,
+    upload_document, ask_question,
+    analyze_crisis, get_chat_history, clear_chat_history,
+    log_vital, get_vitals, get_trends, delete_vital,
+    register_user, login_user
+)
+import json
+
 
 
 # Set page configuration (title, icon, layout)
@@ -17,6 +27,38 @@ st.set_page_config(
     page_icon="../assets/logo.png",  # path to your icon image
     layout="wide"
 )
+
+TOKEN_FILE = ".streamlit_session.json"
+
+def save_session(token: str, user: dict):
+    with open(TOKEN_FILE, "w") as f:
+        json.dump({"token": token, "user": user}, f)
+
+def load_session() -> dict:
+    try:
+        with open(TOKEN_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return None
+
+def clear_session():
+    try:
+        os.remove(TOKEN_FILE)
+    except:
+        pass
+
+# Authentication session state
+if "token" not in st.session_state:
+    st.session_state.token = None
+if "logged_in_user" not in st.session_state:
+    st.session_state.logged_in_user = None
+
+# Restore session from disk on refresh
+if st.session_state.token is None:
+    session = load_session()
+    if session:
+        st.session_state.token = session["token"]
+        st.session_state.logged_in_user = session["user"]
 
 # Store selected patient info in session state (memory that survives reruns)
 if "selected_patient_id" not in st.session_state:
@@ -30,6 +72,58 @@ if "tab" in st.query_params:
     st.session_state.active_tab = int(st.query_params["tab"])
 else:
     st.session_state.active_tab = 0
+    
+if not st.session_state.token:
+    st.title("CareConnect")
+    st.subheader("Please login to continue")
+    
+    login_tab,register_tab=st.tabs(["Login","Register"])
+    
+    with login_tab:
+        with st.form("login_from"):
+            email = st.text_input("Email", placeholder="rahul@sharma.com")
+            password = st.text_input("Password", type="password")
+            login_submitted = st.form_submit_button("Login", type="primary")
+            if login_submitted:
+                if email and password:
+                    with st.spinner("Logging in..."):
+                        result = login_user(email, password)
+                    if "error" in result:
+                        st.error(f"{result['error']}")
+                    else:
+                        st.session_state.token = result["access_token"]
+                        st.session_state.logged_in_user = result["user"]
+                        save_session(result["access_token"], result["user"])
+                        st.success("Logged in successfully!")
+                        st.rerun()
+                else:
+                    st.warning("Please enter email and password")
+    with register_tab:
+        with st.form("register_form"):
+            reg_name = st.text_input("Full Name")
+            reg_email = st.text_input("Email")
+            reg_password = st.text_input("Password", type="password")
+            reg_phone = st.text_input("Phone (optional)")
+            reg_family = st.text_input("Family Name",
+                placeholder="e.g. Sharma Family")
+            
+            reg_submitted = st.form_submit_button("Register", type="primary")
+
+            if reg_submitted:
+                if reg_name and reg_email and reg_password and reg_family:
+                    with st.spinner("Creating account..."):
+                        result = register_user(
+                            reg_name, reg_email, reg_password,
+                            reg_phone, reg_family, "member"
+                        )
+                    if "error" in result:
+                        st.error(f"{result['error']}")
+                    else:
+                        st.success("Account created! Please login.")
+                else:
+                    st.warning("Please fill all required fields")
+
+    st.stop()
 
 
 # ---------------- SIDEBAR ----------------
@@ -44,9 +138,22 @@ with st.sidebar:
 
     # Small description text
     st.caption("AI-powered family health management")
+    # Show logged in user + logout button
+    if st.session_state.logged_in_user:
+        st.caption(f"{st.session_state.logged_in_user['name']}")
+        if st.button("Logout"):
+            clear_session()
+            st.session_state.token = None
+            st.session_state.logged_in_user = None
+            st.session_state.selected_patient_id = None
+            st.session_state.selected_patient_name = None
+            
+            st.rerun()
 
     # Horizontal line separator
     st.divider()
+    
+    
 
     # Section heading
     st.subheader("Select Patient")
@@ -109,6 +216,9 @@ with st.sidebar:
 
 
 # ---------------- MAIN PAGE ----------------
+
+
+            
 
 if not st.session_state.selected_patient_id:
     st.title("Welcome to CareConnect")

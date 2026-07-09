@@ -225,3 +225,28 @@ def delete_vital(vital_id: int) -> bool:
     """Delete a specific vital reading by ID"""
     response = requests.delete(f"{BASE_URL}/vitals/{vital_id}")
     return response.status_code == 200
+
+def register_user(name: str, email: str, password: str,
+                  phone: str, family_name: str, role: str = "member") -> dict:
+    """Register a new family member"""
+    response = requests.post(f"{BASE_URL}/auth/register", json={
+        "name": name,
+        "email": email,
+        "password": password,
+        "phone": phone,
+        "family_name": family_name,
+        "role": role
+    })
+    if response.status_code == 200:
+        return response.json()
+    return {"error": response.json().get("detail", "Registration failed")}
+
+def login_user(email: str, password: str) -> dict:
+    """Login and get JWT token"""
+    response = requests.post(
+        f"{BASE_URL}/auth/login",
+        data={"username": email, "password": password}
+    )
+    if response.status_code == 200:
+        return response.json()
+    return {"error": response.json().get("detail", "Login failed")}
