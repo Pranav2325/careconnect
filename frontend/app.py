@@ -128,13 +128,7 @@ if not st.session_state.token:
 
 # ---------------- SIDEBAR ----------------
 with st.sidebar:
-    col1, col2 = st.sidebar.columns([1, 4])
-
-    with col1:
-        st.image("../assets/logo.png", width=50)
-
-    with col2:
-        st.markdown("## CareConnect")
+    st.markdown("## CareConnect")
 
     # Small description text
     st.caption("AI-powered family health management")
