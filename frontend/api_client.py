@@ -3,8 +3,13 @@
 
 import requests
 
-# Base URL of the FastAPI backend
-BASE_URL = "http://127.0.0.1:8000"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Use environment variable in production, localhost in development
+BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
 
 
 def get_patient(patient_id: int) -> dict:
